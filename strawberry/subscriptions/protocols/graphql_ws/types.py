@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from graphql import GraphQLFormattedError
@@ -17,8 +17,8 @@ ConnectionErrorPayload = Dict[str, Any]
 @dataclass
 class StartPayload(GraphQLTransportMessage):
     query: str
-    variables: Optional[Dict[str, Any]] = UNSET
-    operationName: Optional[str] = UNSET
+    variables: Optional[Dict[str, Any]] = ""
+    operationName: Optional[str] = ""
 
 
 @dataclass
@@ -26,7 +26,7 @@ class DataPayload(GraphQLTransportMessage):
     data: Any
 
     # Optional list of formatted graphql.GraphQLError objects
-    errors: Optional[List[GraphQLFormattedError]] = UNSET
+    errors: Optional[List[GraphQLFormattedError]] = ""
 
 
 ErrorPayload = GraphQLFormattedError
@@ -38,11 +38,12 @@ OperationMessagePayload = Union[
     StartPayload,
     DataPayload,
     ErrorPayload,
+    None,
 ]
 
 
 @dataclass
 class OperationMessage(GraphQLTransportMessage):
     type: str
-    id: str
-    payload: OperationMessagePayload
+    id: str = ""
+    payload: OperationMessagePayload = field(default_factory=dict)

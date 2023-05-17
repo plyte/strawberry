@@ -17,6 +17,8 @@ from strawberry.subscriptions.protocols.graphql_ws import (
     GQL_START,
     GQL_STOP,
 )
+from strawberry.subscriptions.protocols.graphql_ws.types import OperationMessage, \
+    StartPayload
 
 from ..http.clients import AioHttpClient, HttpClient, WebSocketClient
 
@@ -34,13 +36,13 @@ async def ws_raw(http_client: HttpClient) -> AsyncGenerator[WebSocketClient, Non
 @pytest_asyncio.fixture
 async def ws(ws_raw: WebSocketClient) -> AsyncGenerator[WebSocketClient, None]:
     ws = ws_raw
-    await ws.send_json({"type": GQL_CONNECTION_INIT})
+    await ws.send_json(OperationMessage(type=GQL_CONNECTION_INIT).as_dict())
     response = await ws.receive_json()
     assert response["type"] == GQL_CONNECTION_ACK
 
     yield ws
 
-    await ws.send_json({"type": GQL_CONNECTION_TERMINATE})
+    await ws.send_json(OperationMessage(type=GQL_CONNECTION_TERMINATE).as_dict())
     # make sure the WebSocket is disconnected now
     await ws.receive(timeout=2)  # receive close
     assert ws.closed
@@ -54,13 +56,11 @@ def aiohttp_app_client(http_client: HttpClient) -> HttpClient:
 
 async def test_simple_subscription(ws: WebSocketClient):
     await ws.send_json(
-        {
-            "type": GQL_START,
-            "id": "demo",
-            "payload": {
-                "query": 'subscription { echo(message: "Hi") }',
-            },
-        }
+        OperationMessage(
+            type=GQL_START,
+            id="demo",
+            payload=StartPayload(query='subscription { echo(message: "Hi") }').as_dict()
+        ).as_dict()
     )
 
     response = await ws.receive_json()
@@ -68,7 +68,7 @@ async def test_simple_subscription(ws: WebSocketClient):
     assert response["id"] == "demo"
     assert response["payload"]["data"] == {"echo": "Hi"}
 
-    await ws.send_json({"type": GQL_STOP, "id": "demo"})
+    await ws.send_json(OperationMessage(type=GQL_STOP, id="demo").as_dict())
     response = await ws.receive_json()
     assert response["type"] == GQL_COMPLETE
     assert response["id"] == "demo"
